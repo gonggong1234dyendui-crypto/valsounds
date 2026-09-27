@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>荣誉盒 - 轻量流畅版</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #12101a;
+            color: #f0e6ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 12px;
+        }
+        #main {
+            max-width: 440px;
+            width: 100%;
+            background: #1a1625;
+            border-radius: 18px;
+            padding: 16px;
+            border: 1px solid #2e263d;
+        }
+
+        /* 顶部与模式选择 */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .app-title { font-size: 22px; font-weight: bold; color: #c77dff; }
+        .mode-badge {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .mode-online { background: rgba(3, 105, 161, 0.2); color: #38bdf8; border: 1px solid #0284c7; }
+        .mode-offline { background: rgba(22, 163, 74, 0.2); color: #4ade80; border: 1px solid #16a34a; }
+
+        /* 模式切换按钮组 */
+        .mode-switcher {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            background: #12101a;
+            padding: 4px;
+            border-radius: 10px;
+        }
+        .mode-btn {
+            flex: 1;
+            padding: 6px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: #a093be;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+        }
+        .mode-btn.active { background: #2e263d; color: #ffffff; }
+
+        /* 工具控制区 */
+        .tools-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .search-box {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #3c3150;
+            background: #12101a;
+            color: #fff;
+            font-size: 13px;
+            outline: none;
+        }
+        .icon-btn {
+            padding: 8px 12px;
+            background: #2b223a;
+            border: 1px solid #3c3150;
+            border-radius: 8px;
+            color: #c77dff;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        /* 音量栏 */
+        .volume-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #12101a;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #b3a5d0;
+            margin-bottom: 12px;
+        }
+        .volume-bar input { flex: 1; accent-color: #9d4edd; }
+
+        /* 语音网格（去重动画，轻量渲染） */
+        .sound-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+            max-height: 52vh;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+        .sound-card {
+            position: relative;
+            background: #2a2139;
+            color: #f0e6ff;
+            border-radius: 10px;
+            padding: 10px 8px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid #3c2f52;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-all;
+        }
+        .sound-card:active { background: #3b2d52; }
+        /* 轻量级高亮，无卡顿动画 */
+        .sound-card.playing {
+            background: #6b21a8;
+            border-color: #c084fc;
+            color: #ffffff;
+            font-weight: bold;
+        }
+        .key-tag {
+            position: absolute;
+            top: 2px;
+            left: 4px;
+            font-size: 9px;
+            color: #8b5cf6;
+            font-family: monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+
+        /* 操作按钮组 */
+        .action-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .btn-main {
+            width: 100%;
+            padding: 10px;
+            border-radius: 10px;
+            border: none;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-stop { background: #dc2626; color: white; }
+        .btn-load { background: #059669; color: white; }
+        .btn-download { background: #7c3aed; color: white; }
+
+        /* 隐藏的文件输入框 */
+        input[type="file"] { display: none; }
+
+        /* 弹窗/面板通用样式 */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 15px;
+        }
+        .modal-content {
+            background: #1a1625;
+            border-radius: 14px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #3c3150;
+            padding: 16px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: bold;
+            color: #c77dff;
+        }
+        .modal-body {
+            overflow-y: auto;
+            flex: 1;
+        }
+        .key-bind-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #2a2139;
+            font-size: 13px;
+        }
+        .key-bind-btn {
+            padding: 4px 10px;
+            background: #2e263d;
+            border: 1px solid #5b21b6;
+            color: #a78bfa;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* 进度提示 */
+        .status-box {
+            background: #211a2f;
+            border: 1px solid #3c3150;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #8b5cf6;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div id="main">
+        <!-- 顶部标题与当前通道 -->
+        <div class="top-header">
+            <div class="app-title">荣誉盒</div>
+            <div class="mode-badge mode-online" id="modeBadge" onclick="toggleMode()">🌐 联网在线模式</div>
+        </div>
+
+        <!-- 模式切换控制器 -->
+        <div class="mode-switcher">
+            <button class="mode-btn active" id="btnModeOnline" onclick="setMode('online')">网络拉取</button>
+            <button class="mode-btn" id="btnModeOffline" onclick="setMode('offline')">本地目录/离线</button>
+        </div>
+
+        <!-- 工具栏与按键设置入口 -->
+        <div class="tools-bar">
+            <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜索音效..." oninput="renderGrid()">
+            <button class="icon-btn" onclick="openKeyModal()"><i class="fas fa-keyboard"></i> 按键设置</button>
+        </div>
+
+        <!-- 音量微调 -->
+        <div class="volume-bar">
+            <i class="fas fa-volume-up"></i>
+            <input type="range" id="volRange" min="0" max="1" step="0.05" value="1" oninput="changeVolume(this.value)">
+            <span id="volNum">100%</span>
+        </div>
+
+        <!-- 音效按键网格 -->
+        <div class="sound-grid" id="soundGrid"></div>
+
+        <!-- 操作按钮组 -->
+        <div class="action-group">
+            <button class="btn-main btn-stop" onclick="stopAll()"><i class="fas fa-stop"></i> 停止播放</button>
+            
+            <!-- 读取本地目录/文件入口（免重复下载关键功能） -->
+            <button class="btn-main btn-load" onclick="triggerLocalLoad()">
+                <i class="fas fa-folder-open"></i> 📁 选择/读取本地语音文件夹或文件
+            </button>
+            <!-- 手机/电脑通用文件夹与文件选择框 -->
+            <input type="file" id="folderInput" webkitdirectory directory multiple onchange="handleLocalFiles(event)">
+            <input type="file" id="filesInput" accept="audio/*" multiple onchange="handleLocalFiles(event)">
+
+            <button class="btn-main btn-download" onclick="downloadAll()"><i class="fas fa-download"></i> 下载 30 个音频到本地文件夹</button>
+        </div>
+
+        <!-- 下载/加载状态框 -->
+        <div class="status-box" id="statusBox">
+            <div id="statusText" style="color:#c77dff; margin-bottom:4px;">准备中...</div>
+            <div id="statusPath" style="color:#4ade80; font-size:11px; word-break:break-all;"></div>
+        </div>
+    </div>
+
+    <!-- 按键设置弹窗面板 -->
+    <div class="modal" id="keyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>⌨️ 键盘绑定设置面板</span>
+                <i class="fas fa-times" style="cursor:pointer;" onclick="closeKeyModal()"></i>
+            </div>
+            <div class="modal-body" id="keyModalList"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    // 30 个音效基础配置
+    const SOUND_LIST = [
+        { id: "1", name: "卡啦", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MTQ=" },
+        { id: "2", name: "曹", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1Ijg=" },
+        { id: "3", name: "卡键", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MTU=" },
+        { id: "4", name: "呀嘞呀嘞（缓慢版）", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MTg=" },
+        { id: "5", name: "呀嘞呀嘞（快速版）", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MTc=" },
+        { id: "6", name: "被狗运了", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MzI=" },
+        { id: "7", name: "吞子弹了", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MTY=" },
+        { id: "8", name: "vamos", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MDc=" },
+        { id: "9", name: "宽带网速他太慢了", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MTk=" },
+        { id: "10", name: "设置有问题", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MzQ=" },
+        { id: "11", name: "你们在干嘛", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MTE=" },
+        { id: "12", name: "贪vp了没办法", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MzV=" },
+        { id: "13", name: "走啦", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MTY=" },
+        { id: "14", name: "混沌击杀", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1Mjk=" },
+        { id: "15", name: "神也会卡", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MzE=" },
+        { id: "16", name: "这不是外挂", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1Mzc=" },
+        { id: "17", name: "助眠", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MTM=" },
+        { id: "18", name: "对面是职业没办法", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MjA=" },
+        { id: "19", name: "被队友闪了没办法", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MzM=" },
+        { id: "20", name: "1打3没办法", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MDY=" },
+        { id: "21", name: "皮肤有问题，没办法", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MzA=" },
+        { id: "22", name: "剩一滴血没办法", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MTI=" },
+        { id: "23", name: "五个没办法", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MTA=" },
+        { id: "24", name: "小妹妹", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MjE=" },
+        { id: "25", name: "小妹妹~（气泡音）", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MjQ=" },
+        { id: "26", name: "小妹妹~", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MjI=" },
+        { id: "27", name: "小妹妹~~", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MjM=" },
+        { id: "28", name: "小弟弟", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MjY=" },
+        { id: "29", name: "小妹妹！", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1MjU=" },
+        { id: "30", name: "小弟弟~", url: "https://res.wx.qq.com/voice/getvoice?mediaid=MzY4ODQwMDUyOV8xMDAwMDE1Mjc=" }
+    ];
+
+    // 默认按键分配
+    const DEFAULT_KEYS = ["1","2","3","4","5","6","7","8","9","0","Q","W","E","R","T","Y","U","I","O","P","A","S","D","F","G","H","J","K","L","Z"];
+    
+    // 全局状态
+    let currentMode = localStorage.getItem('app_mode') || 'online'; // 'online' | 'offline'
+    let customKeys = JSON.parse(localStorage.getItem('custom_keys') || "{}");
+    let listeningSoundId = null; // 当前正在绑定的音效 ID
+
+    // Web Audio 音频引擎
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const gainNode = audioCtx.createGain();
+    gainNode.connect(audioCtx.destination);
+    let activeSources = [];
+    let currentCard = null;
+
+    // IndexedDB 本地数据库管理
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open('HonorBoxDB_v2', 1);
+            req.onupgradeneeded = e => e.target.result.createObjectStore('files');
+            req.onsuccess = e => resolve(e.target.result);
+            req.onerror = e => reject(e);
+        });
+    }
+
+    async function saveFileToDB(name, blob) {
+        const db = await openDB();
+        const tx = db.transaction('files', 'readwrite');
+        tx.objectStore('files').put(blob, name);
+    }
+
+    async function getFileFromDB(name) {
+        const db = await openDB();
+        return new Promise(resolve => {
+            const tx = db.transaction('files', 'readonly');
+            const req = tx.objectStore('files').get(name);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        });
+    }
+
+    // 切换在线/离线模式
+    function setMode(mode) {
+        currentMode = mode;
+        localStorage.setItem('app_mode', mode);
+        
+        document.getElementById('btnModeOnline').className = mode === 'online' ? 'mode-btn active' : 'mode-btn';
+        document.getElementById('btnModeOffline').className = mode === 'offline' ? 'mode-btn active' : 'mode-btn';
+        
+        const badge = document.getElementById('modeBadge');
+        if (mode === 'online') {
+            badge.className = 'mode-badge mode-online';
+            badge.textContent = '🌐 联网在线模式';
+        } else {
+            badge.className = 'mode-badge mode-offline';
+            badge.textContent = '📁 本地/离线模式';
+        }
+        showToast(mode === 'online' ? '已切为联网模式' : '已切为本地离线模式');
+    }
+
+    function toggleMode() {
+        setMode(currentMode === 'online' ? 'offline' : 'online');
+    }
+
+    // 渲染音效网格
+    function renderGrid() {
+        const grid = document.getElementById('soundGrid');
+        const search = document.getElementById('searchInput').value.trim().toLowerCase();
+        grid.innerHTML = '';
+
+        SOUND_LIST.forEach((item, index) => {
+            if (search && !item.name.toLowerCase().includes(search)) return;
+
+            const assignedKey = customKeys[item.id] || DEFAULT_KEYS[index] || '';
+            const card = document.createElement('div');
+            card.className = 'sound-card';
+            card.dataset.id = item.id;
+            card.dataset.key = assignedKey;
+
+            card.innerHTML = `
+                ${assignedKey ? `<span class="key-tag">${assignedKey}</span>` : ''}
+                <span>${item.name}</span>
+            `;
+
+            card.onclick = () => playSound(item, card);
+            grid.appendChild(card);
+        });
+    }
+
+    // 核心播放函数
+    async function playSound(item, cardEl) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        stopAll(false);
+
+        try {
+            let buffer = null;
+            if (currentMode === 'online') {
+                // 联网模式：直接抓取原 URL
+                const res = await fetch(item.url);
+                const arrayBuf = await res.arrayBuffer();
+                buffer = await audioCtx.decodeAudioData(arrayBuf);
+            } else {
+                // 本地/离线模式：从 DB 读取用户选择过的本地文件
+                const blob = await getFileFromDB(item.name);
+                if (!blob) {
+                    showToast(`未找到《${item.name}》的本地文件，请先点击【选择本地文件夹】`);
+                    return;
+                }
+                const arrayBuf = await blob.arrayBuffer();
+                buffer = await audioCtx.decodeAudioData(arrayBuf);
+            }
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(gainNode);
+            source.start();
+
+            if (currentCard) currentCard.classList.remove('playing');
+            cardEl.classList.add('playing');
+            currentCard = cardEl;
+
+            activeSources.push(source);
+            source.onended = () => {
+                cardEl.classList.remove('playing');
+                if (currentCard === cardEl) currentCard = null;
+            };
+        } catch (e) {
+            console.error(e);
+            showToast('播放失败，请检查文件或网络');
+        }
+    }
+
+    // 停止播放
+    function stopAll(showToastMsg = true) {
+        activeSources.forEach(s => { try { s.stop(); } catch(e){} });
+        activeSources = [];
+        if (currentCard) {
+            currentCard.classList.remove('playing');
+            currentCard = null;
+        }
+        if (showToastMsg) showToast('已停止所有播放');
+    }
+
+    // 音量调节
+    function changeVolume(val) {
+        gainNode.gain.value = val;
+        document.getElementById('volNum').textContent = Math.round(val * 100) + '%';
+    }
+
+    // 触发读取本地文件夹/文件（手机/电脑兼容）
+    function triggerLocalLoad() {
+        // 优先尝试文件夹输入，手机端提供单选/多选补充
+        if ('webkitdirectory' in document.createElement('input')) {
+            document.getElementById('folderInput').click();
+        } else {
+            document.getElementById('filesInput').click();
+        }
+    }
+
+    // 处理用户选中的本地音效文件（免重复下载的核心部分）
+    async function handleLocalFiles(event) {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+
+        let matchedCount = 0;
+        showToast('正在读取并匹配本地文件...');
+
+        for (let file of files) {
+            const cleanFileName = file.name.replace(/\.[^/.]+$/, "").trim();
+            
+            // 匹配音效库中的名字
+            for (let sound of SOUND_LIST) {
+                if (cleanFileName.includes(sound.name) || sound.name.includes(cleanFileName)) {
+                    await saveFileToDB(sound.name, file);
+                    matchedCount++;
+                    break;
+                }
+            }
+        }
+
+        if (matchedCount > 0) {
+            showToast(`成功导入 ${matchedCount} 个本地音频！自动切换至离线模式`);
+            setMode('offline');
+        } else {
+            showToast('未识别到匹配的音效文件名，请确认文件名正确');
+        }
+    }
+
+    // 批量下载 30 个音频
+    async function downloadAll() {
+        const box = document.getElementById('statusBox');
+        const text = document.getElementById('statusText');
+        const path = document.getElementById('statusPath');
+
+        box.style.display = 'block';
+        text.textContent = "正在联网抓取 30 个音效文件...";
+
+        let dirHandle = null;
+        let isFolderAccess = false;
+
+        if ('showDirectoryPicker' in window) {
+            try {
+                dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                isFolderAccess = true;
+                path.innerHTML = `<b>保存位置：</b>文件管理器 / ${dirHandle.name} /`;
+            } catch (e) {
+                if (e.name === 'AbortError') { box.style.display = 'none'; return; }
+            }
+        }
+
+        if (!isFolderAccess) {
+            path.innerHTML = `<b>手机/电脑提示：</b>文件将自动下载到手机【Downloads/下载】目录（或打包为 ZIP）`;
+        }
+
+        let zip = (!isFolderAccess && typeof JSZip !== 'undefined') ? new JSZip() : null;
+
+        for (let i = 0; i < SOUND_LIST.length; i++) {
+            const item = SOUND_LIST[i];
+            const fileName = `${item.name}.mp3`;
+            text.textContent = `下载保存中 (${i + 1}/30): ${fileName}`;
+
+            try {
+                const res = await fetch(item.url);
+                const blob = await res.blob();
+                
+                // 下载的同时直接保存一份到本地数据库，避免用户再去选一次
+                await saveFileToDB(item.name, blob);
+
+                if (isFolderAccess && dirHandle) {
+                    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                } else if (zip) {
+                    zip.file(fileName, blob);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        if (!isFolderAccess && zip) {
+            text.textContent = "正在生成 ZIP 压缩包...";
+            const zipContent = await zip.generateAsync({ type: 'blob' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(zipContent);
+            a.download = '荣誉盒语音包.zip';
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        text.textContent = "✅ 下载并本地写入完成！已自动建立离线索引！";
+        showToast("已成功保存至本地文件管理器");
+    }
+
+    // --- 键盘绑定面板逻辑 ---
+    function openKeyModal() {
+        const modalList = document.getElementById('keyModalList');
+        modalList.innerHTML = '';
+
+        SOUND_LIST.forEach((item, index) => {
+            const currentKey = customKeys[item.id] || DEFAULT_KEYS[index] || '无';
+            const row = document.createElement('div');
+            row.className = 'key-bind-row';
+            row.innerHTML = `
+                <span>${item.name}</span>
+                <button class="key-bind-btn" id="kbtn_${item.id}" onclick="startListenKey('${item.id}')">
+                    ${listeningSoundId === item.id ? '请按键盘...' : `按键: [ ${currentKey} ]`}
+                </button>
+            `;
+            modalList.appendChild(row);
+        });
+
+        document.getElementById('keyModal').style.display = 'flex';
+    }
+
+    function closeKeyModal() {
+        listeningSoundId = null;
+        document.getElementById('keyModal').style.display = 'none';
+        renderGrid();
+    }
+
+    function startListenKey(soundId) {
+        listeningSoundId = soundId;
+        openKeyModal();
+    }
+
+    // 键盘按键事件监听（同时处理常规打碟与改键）
+    window.addEventListener('keydown', (e) => {
+        // 如果正在修改按键
+        if (listeningSoundId) {
+            e.preventDefault();
+            const pressedKey = e.key.toUpperCase();
+            if (pressedKey !== 'ESCAPE') {
+                customKeys[listeningSoundId] = pressedKey;
+                localStorage.setItem('custom_keys', JSON.stringify(customKeys));
+                showToast(`已将按键绑定为: ${pressedKey}`);
+            }
+            listeningSoundId = null;
+            openKeyModal();
+            return;
+        }
+
+        // 打碟触发
+        if (document.activeElement.tagName === 'INPUT') return;
+        const key = e.key.toUpperCase();
+        const cards = document.querySelectorAll('.sound-card');
+        for (let card of cards) {
+            if (card.dataset.key === key) {
+                card.click();
+                break;
+            }
+        }
+    });
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    // 页面装载完成初始化
+    window.addEventListener('load', () => {
+        setMode(currentMode);
+        renderGrid();
+    });
+    </script>
+</body>
+</html>
